@@ -1,7 +1,7 @@
 settings:
   name: "JTorrent Backend"
   # Change this after your first GitHub Pages deploy.
-  base_url: "https://YOUR_GITHUB_USERNAME.github.io/jtorrent"
+  base_url: "https://jivaro.github.io/jtorrent"
   # Optional. Set this only if you configure a GitHub Pages custom domain.
   custom_domain: null
   output_dir: "public"
