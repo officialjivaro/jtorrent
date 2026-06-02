@@ -1,0 +1,65 @@
+name: Update JTorrent Backend Index
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Once daily. Cron is UTC; 03:23 UTC is 12:23 JST.
+    - cron: "23 3 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: jtorrent-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build public JSON backend
+        run: python scripts/build_index.py --config config/sources.yml
+
+      - name: Keep scheduled workflows active monthly
+        if: github.event_name == 'schedule'
+        run: |
+          DAY=$(date -u +%d)
+          if [ "$DAY" = "01" ]; then
+            mkdir -p .status
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > .status/last-scheduled-run.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .status/last-scheduled-run.txt
+            git commit -m "chore: record scheduled workflow activity [skip ci]" || echo "No changes to commit"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
