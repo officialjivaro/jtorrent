@@ -11,8 +11,8 @@ settings:
     retries: 2
     max_torrent_bytes: 5242880
   limits:
-    max_items_total: 20000
-    max_items_per_source: 1000
+    max_items_total: 100000
+    max_items_per_source: 5000
     # Generated JSON arrays are automatically split into shards at about 5 MB.
     max_json_file_bytes: 5242880
 sources:
