@@ -21,7 +21,6 @@ settings:
       - open-source
       - creative-commons
       - open-data
-    # Guardrails: this backend should not become a general pirate-index scraper.
     blocked_domains:
       - 1337x.to
       - 1337x.st
@@ -58,7 +57,11 @@ sources:
       - "(?:^|/)(?:[0-9]{2}\\.[0-9]{2}|noble|jammy|focal|questing|plucky)/?$"
     include_url_regexes:
       - "\\.iso\\.torrent$"
-    tags: [linux, ubuntu, iso, official]
+    tags:
+      - linux
+      - ubuntu
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: debian_official
@@ -76,7 +79,11 @@ sources:
     max_depth: 0
     include_url_regexes:
       - "\\.iso\\.torrent$"
-    tags: [linux, debian, iso, official]
+    tags:
+      - linux
+      - debian
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: fedora_official
@@ -95,7 +102,11 @@ sources:
       - "\\.torrent$"
     exclude_url_regexes:
       - "debug"
-    tags: [linux, fedora, iso, official]
+    tags:
+      - linux
+      - fedora
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: arch_official
@@ -116,7 +127,11 @@ sources:
     include_url_regexes:
       - "\\.torrent$"
     collect_magnets: true
-    tags: [linux, arch, iso, official]
+    tags:
+      - linux
+      - arch
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: linux_mint_official
@@ -137,7 +152,11 @@ sources:
       - "\\.torrent$"
       - "torrent"
     collect_magnets: false
-    tags: [linux, linux-mint, iso, official]
+    tags:
+      - linux
+      - linux-mint
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: kali_official
@@ -155,7 +174,11 @@ sources:
     include_url_regexes:
       - "\\.iso\\.torrent$"
       - "\\.img\\.torrent$"
-    tags: [linux, kali, iso, official]
+    tags:
+      - linux
+      - kali
+      - iso
+      - official
     fetch_torrent_metadata: true
 
   - id: academic_torrents_datasets
@@ -168,7 +191,10 @@ sources:
     license: "Academic Torrents dataset collection feed. Verify item-level rights before broad reuse."
     feed_urls:
       - "https://academictorrents.com/collection/datasets.rss"
-    tags: [datasets, research, academic-torrents]
+    tags:
+      - datasets
+      - research
+      - academic-torrents
     fetch_torrent_metadata: false
 
   - id: internet_archive_prelinger_public_domain
@@ -182,7 +208,11 @@ sources:
     query: "collection:prelinger AND mediatype:movies"
     rows: 250
     include_torrent_url: true
-    tags: [internet-archive, public-domain, movies, prelinger]
+    tags:
+      - internet-archive
+      - public-domain
+      - movies
+      - prelinger
 
   - id: internet_archive_cc_movies
     name: "Internet Archive Creative Commons Movies"
@@ -196,7 +226,11 @@ sources:
     query: "licenseurl:*creativecommons* AND mediatype:movies"
     rows: 250
     include_torrent_url: true
-    tags: [internet-archive, creative-commons, movies, video]
+    tags:
+      - internet-archive
+      - creative-commons
+      - movies
+      - video
 
   - id: internet_archive_cc_audio
     name: "Internet Archive Creative Commons Audio"
@@ -210,7 +244,11 @@ sources:
     query: "licenseurl:*creativecommons* AND mediatype:audio"
     rows: 250
     include_torrent_url: true
-    tags: [internet-archive, creative-commons, audio, music]
+    tags:
+      - internet-archive
+      - creative-commons
+      - audio
+      - music
 
   - id: internet_archive_cc_texts
     name: "Internet Archive Creative Commons Texts"
@@ -224,10 +262,13 @@ sources:
     query: "licenseurl:*creativecommons* AND mediatype:texts"
     rows: 250
     include_torrent_url: true
-    tags: [internet-archive, creative-commons, books, texts]
+    tags:
+      - internet-archive
+      - creative-commons
+      - books
+      - texts
 
 manual_items:
-  # Manual entries are useful for official torrents that are hard to discover automatically.
   - title: "Arch Linux latest ISO torrent"
     category: linux
     source_id: arch_manual_latest
@@ -237,4 +278,8 @@ manual_items:
     copyright_status: open-source
     license: "Official Arch Linux ISO torrent."
     license_url: "https://archlinux.org/packages/licenses/"
-    tags: [linux, arch, iso, official]
+    tags:
+      - linux
+      - arch
+      - iso
+      - official
