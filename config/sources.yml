@@ -5,7 +5,7 @@ settings:
   output_dir: "public"
   frontend_origin: "https://www.jtorrent.net"
   request:
-    user_agent: "JTorrentBackend/0.1 (+https://www.jtorrent.net; contact: replace-me@example.com)"
+    user_agent: "JTorrentBackend/0.1 (+https://www.jtorrent.net; contact: no.contact@jtorrent.net)"
     timeout_seconds: 25
     delay_seconds: 1.0
     retries: 2
@@ -23,24 +23,6 @@ settings:
       - open-source
       - creative-commons
       - open-data
-    blocked_domains:
-      - 1337x.to
-      - 1337x.st
-      - 1337x.is
-      - thepiratebay.org
-      - yts.mx
-      - yts.rs
-      - eztv.re
-      - eztv.tf
-      - rarbg.to
-      - nyaa.si
-      - sukebei.nyaa.si
-      - limetorrents.lol
-      - torrentgalaxy.to
-      - kickasstorrents.to
-      - bitsearch.to
-      - magnetdl.com
-      - zooqle.com
 
 sources:
   - id: ubuntu_official
