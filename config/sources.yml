@@ -1,8 +1,6 @@
 settings:
   name: "JTorrent Backend"
-  # Change this after your first GitHub Pages deploy.
-  base_url: "https://jivaro.github.io/jtorrent"
-  # Optional. Set this only if you configure a GitHub Pages custom domain.
+  base_url: "https://officialjivaro.github.io/jtorrent"
   custom_domain: null
   output_dir: "public"
   frontend_origin: "https://www.jtorrent.net"
@@ -13,8 +11,8 @@ settings:
     retries: 2
     max_torrent_bytes: 5242880
   limits:
-    max_items_total: 10000
-    max_items_per_source: 750
+    max_items_total: 20000
+    max_items_per_source: 1000
   policy:
     require_authorized_sources: true
     allowed_status_values:
@@ -163,28 +161,70 @@ sources:
   - id: academic_torrents_datasets
     name: "Academic Torrents Datasets RSS"
     type: rss_feed
-    enabled: false
+    enabled: true
     category: datasets
     source_homepage: "https://academictorrents.com/collection/datasets"
     copyright_status: open-data
-    license: "Academic Torrents is intended for research datasets; verify item-level rights before enabling broad ingestion."
+    license: "Academic Torrents dataset collection feed. Verify item-level rights before broad reuse."
     feed_urls:
       - "https://academictorrents.com/collection/datasets.rss"
     tags: [datasets, research, academic-torrents]
     fetch_torrent_metadata: false
 
-  - id: internet_archive_public_domain_example
-    name: "Internet Archive Public-Domain/CC Example"
+  - id: internet_archive_prelinger_public_domain
+    name: "Internet Archive Prelinger Public Domain Movies"
     type: internet_archive_advancedsearch
-    enabled: false
+    enabled: true
     category: public-domain
-    source_homepage: "https://archive.org/"
+    source_homepage: "https://archive.org/details/prelinger"
     copyright_status: public-domain
-    license: "Internet Archive metadata query restricted by your configured collection/query. Verify item-level rights before enabling."
+    license: "Internet Archive Prelinger collection query. Verify item-level rights before broad reuse."
     query: "collection:prelinger AND mediatype:movies"
-    rows: 50
+    rows: 250
     include_torrent_url: true
-    tags: [internet-archive, public-domain, media]
+    tags: [internet-archive, public-domain, movies, prelinger]
+
+  - id: internet_archive_cc_movies
+    name: "Internet Archive Creative Commons Movies"
+    type: internet_archive_advancedsearch
+    enabled: true
+    category: creative-commons
+    source_homepage: "https://archive.org/details/movies"
+    copyright_status: creative-commons
+    license: "Internet Archive movies with Creative Commons license metadata. Verify item-level rights before broad reuse."
+    license_url: "https://creativecommons.org/licenses/"
+    query: "licenseurl:*creativecommons* AND mediatype:movies"
+    rows: 250
+    include_torrent_url: true
+    tags: [internet-archive, creative-commons, movies, video]
+
+  - id: internet_archive_cc_audio
+    name: "Internet Archive Creative Commons Audio"
+    type: internet_archive_advancedsearch
+    enabled: true
+    category: creative-commons
+    source_homepage: "https://archive.org/details/audio"
+    copyright_status: creative-commons
+    license: "Internet Archive audio with Creative Commons license metadata. Verify item-level rights before broad reuse."
+    license_url: "https://creativecommons.org/licenses/"
+    query: "licenseurl:*creativecommons* AND mediatype:audio"
+    rows: 250
+    include_torrent_url: true
+    tags: [internet-archive, creative-commons, audio, music]
+
+  - id: internet_archive_cc_texts
+    name: "Internet Archive Creative Commons Texts"
+    type: internet_archive_advancedsearch
+    enabled: true
+    category: creative-commons
+    source_homepage: "https://archive.org/details/texts"
+    copyright_status: creative-commons
+    license: "Internet Archive texts with Creative Commons license metadata. Verify item-level rights before broad reuse."
+    license_url: "https://creativecommons.org/licenses/"
+    query: "licenseurl:*creativecommons* AND mediatype:texts"
+    rows: 250
+    include_torrent_url: true
+    tags: [internet-archive, creative-commons, books, texts]
 
 manual_items:
   # Manual entries are useful for official torrents that are hard to discover automatically.
