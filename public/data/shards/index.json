@@ -1,0 +1,49 @@
+{
+  "compact_shards": [
+    {
+      "bytes": 619,
+      "categories": [
+        "linux"
+      ],
+      "count": 1,
+      "id": "compact-0001",
+      "path": "data/shards/compact/compact-0001.json",
+      "sources": [
+        "arch_manual_latest"
+      ],
+      "url": "https://officialjivaro.github.io/jtorrent/data/shards/compact/compact-0001.json"
+    }
+  ],
+  "full_shards": [
+    {
+      "bytes": 1263,
+      "categories": [
+        "linux"
+      ],
+      "count": 1,
+      "id": "full-0001",
+      "path": "data/shards/full/full-0001.json",
+      "sources": [
+        "arch_manual_latest"
+      ],
+      "url": "https://officialjivaro.github.io/jtorrent/data/shards/full/full-0001.json"
+    }
+  ],
+  "max_file_bytes": 5242880,
+  "search_shards": [
+    {
+      "bytes": 494,
+      "categories": [
+        "linux"
+      ],
+      "count": 1,
+      "id": "search-0001",
+      "path": "data/search/search-0001.json",
+      "sources": [
+        "arch_manual_latest"
+      ],
+      "url": "https://officialjivaro.github.io/jtorrent/data/search/search-0001.json"
+    }
+  ],
+  "source_shards": []
+}

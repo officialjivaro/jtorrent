@@ -2,7 +2,7 @@
 
 This repository is a scheduled static-data backend for `www.jtorrent.net`.
 
-It uses GitHub Actions at 6:00 AM and 6:00 PM Japan time to fetch allowlisted authorized torrent sources, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
+It uses GitHub Actions at 6:00 AM and 6:00 PM Japan time to fetch the enabled sources listed in `config/sources.yml`, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
 
 ## What this repo publishes
 
@@ -24,11 +24,9 @@ After the workflow runs, GitHub Pages serves:
 
 A minimal status page is also generated at `/` so you can verify that deployment worked. The real frontend can stay on `www.jtorrent.net` and read the JSON endpoints.
 
-## Policy boundary
+## Source allowlist model
 
-This starter project is intentionally allowlist-based. It is designed for authorized torrents such as official Linux ISO torrents, open-source software, public-domain media, Creative Commons media, and open datasets. It does not include adapters for general pirate indexes, anti-bot bypass, credentialed scraping, or bulk magnet-link harvesting from unauthorized sources.
-
-A disclaimer on the frontend is useful, but it does not make unauthorized indexing safe or lawful. Keep sources in `config/sources.yml` limited to sources you have permission to aggregate.
+The backend is intentionally simple: `config/sources.yml` is the source allowlist. A source with `enabled: true` is fetched, and a source with `enabled: false` is skipped. There is no separate policy block, blocked-domain list, or copyright-status filter in the builder. Source fields such as `license`, `license_url`, and `copyright_status` are optional metadata that can still be useful for the frontend.
 
 ## Local setup
 
@@ -100,15 +98,18 @@ rss_feed
 internet_archive_advancedsearch
 ```
 
-Every enabled source should have:
+Every source should have at minimum:
 
 ```yaml
-copyright_status: open-source | authorized | public-domain | creative-commons | open-data
-license: "Plain English source/license note"
-source_homepage: "https://official.example.org"
+id: example_source
+name: "Example Source"
+type: html_torrent_links
+enabled: true
+category: example
+source_homepage: "https://example.org"
 ```
 
-The build fails if a source domain is on the blocked-domain list or if it lacks an authorized status.
+Optional metadata fields such as `license`, `license_url`, and `copyright_status` are copied into the JSON output when present, but they are not used to filter results.
 
 ## Data shape
 

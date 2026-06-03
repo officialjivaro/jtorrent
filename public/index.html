@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JTorrent Backend</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem; line-height: 1.5; max-width: 900px; }
+    code, pre { background: #f4f4f4; padding: .15rem .3rem; border-radius: .25rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: .75rem; padding: 1rem; }
+    a { word-break: break-word; }
+  </style>
+</head>
+<body>
+  <h1>JTorrent backend</h1>
+  <p>This is the static JSON backend for <strong>www.jtorrent.net</strong>.</p>
+  <div class="grid">
+    <div class="card"><strong>Items</strong><br>1</div>
+    <div class="card"><strong>Sources enabled</strong><br>11</div>
+    <div class="card"><strong>Generated</strong><br>2026-06-03T13:48:02Z</div>
+    <div class="card"><strong>Max JSON file size</strong><br>5,242,880 bytes</div>
+  </div>
+  <h2>JSON endpoints</h2>
+  <ul>
+    <li><a href="data/manifest.json">data/manifest.json</a></li>
+    <li><a href="data/search-index.min.json">data/search-index.min.json</a> legacy compact endpoint; becomes a shard pointer if too large</li>
+    <li><a href="data/search-index.summary.json">data/search-index.summary.json</a> lightweight search index; becomes a shard pointer if too large</li>
+    <li><a href="data/search-index.json">data/search-index.json</a> full index; becomes a shard pointer if too large</li>
+    <li><a href="data/sources.json">data/sources.json</a></li>
+    <li><a href="data/shards/index.json">data/shards/index.json</a></li>
+  </ul>
+  <h2>Frontend example</h2>
+  <pre><code>const manifest = await fetch('https://officialjivaro.github.io/jtorrent/data/manifest.json').then(r =&gt; r.json());
+const shardUrls = manifest.sharding.search_shards.map(s =&gt; 'https://officialjivaro.github.io/jtorrent/' + s.path);
+const firstSearchShard = await fetch(shardUrls[0]).then(r =&gt; r.json());</code></pre>
+  <h2>Categories</h2>
+  <ul><li><a href="data/by-category/linux.json">linux</a></li></ul>
+  <h2>Sources</h2>
+  <ul><li><a href="data/by-source/arch-manual-latest.json">arch-manual-latest</a></li></ul>
+</body>
+</html>

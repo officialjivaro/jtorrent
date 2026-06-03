@@ -1,0 +1,52 @@
+[
+  {
+    "category": "linux",
+    "completed": null,
+    "copyright_status": "open-source",
+    "date_added": null,
+    "date_published": null,
+    "description": null,
+    "details_url": "https://archlinux.org/download/",
+    "download_page_url": null,
+    "fetched_at": "2026-06-03T13:48:02Z",
+    "files": [],
+    "hash_source": null,
+    "id": "arch-manual-latest-a197b7162978cdb3",
+    "infohash": null,
+    "language": null,
+    "leechers": null,
+    "license": "Official Arch Linux ISO torrent.",
+    "license_url": "https://archlinux.org/packages/licenses/",
+    "magnet": null,
+    "mirrors": [
+      {
+        "details_url": "https://archlinux.org/download/",
+        "magnet": null,
+        "source_id": "arch_manual_latest",
+        "source_name": "Official Arch Linux Downloads",
+        "source_url": "https://archlinux.org/download/",
+        "torrent_url": "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso.torrent"
+      }
+    ],
+    "normalized_title": "arch linux latest iso torrent",
+    "raw": {},
+    "seeders": null,
+    "size": null,
+    "size_bytes": null,
+    "slug": "arch-linux-latest-iso-torrent",
+    "source_homepage": null,
+    "source_id": "arch_manual_latest",
+    "source_name": "Official Arch Linux Downloads",
+    "source_url": "https://archlinux.org/download/",
+    "subcategory": null,
+    "tags": [
+      "linux",
+      "arch",
+      "iso",
+      "official"
+    ],
+    "title": "Arch Linux latest ISO torrent",
+    "torrent_url": "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso.torrent",
+    "trackers": []
+  }
+]

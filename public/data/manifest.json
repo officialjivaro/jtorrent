@@ -1,0 +1,127 @@
+{
+  "base_url": "https://officialjivaro.github.io/jtorrent",
+  "counts_by_category": {
+    "linux": 1
+  },
+  "counts_by_source": {
+    "arch_manual_latest": 1
+  },
+  "custom_domain": null,
+  "enabled_source_count": 11,
+  "errors": [],
+  "files": {
+    "search_index": {
+      "bytes": 1586,
+      "mode": "inline",
+      "path": "search-index.json",
+      "written": true
+    },
+    "search_index_min": {
+      "bytes": 619,
+      "mode": "inline",
+      "path": "search-index.min.json",
+      "written": true
+    },
+    "search_index_summary": {
+      "bytes": 494,
+      "mode": "inline",
+      "path": "search-index.summary.json",
+      "written": true
+    },
+    "shard_index": {
+      "bytes": 1095,
+      "path": "shards/index.json"
+    },
+    "sources": {
+      "bytes": 5358,
+      "path": "sources.json",
+      "written": true
+    }
+  },
+  "frontend_origin": "https://www.jtorrent.net",
+  "generated_at": "2026-06-03T13:48:02Z",
+  "item_count": 1,
+  "max_json_file_bytes": 5242880,
+  "name": "JTorrent Backend",
+  "raw_item_count": 1,
+  "sharding": {
+    "by_category": {
+      "linux": {
+        "bytes": 619,
+        "category": "linux",
+        "count": 1,
+        "mode": "inline",
+        "path": "data/by-category/linux.json",
+        "url": "https://officialjivaro.github.io/jtorrent/data/by-category/linux.json"
+      }
+    },
+    "by_source": {
+      "arch-manual-latest": {
+        "bytes": 619,
+        "count": 1,
+        "mode": "inline",
+        "path": "data/by-source/arch-manual-latest.json",
+        "source": "arch-manual-latest",
+        "url": "https://officialjivaro.github.io/jtorrent/data/by-source/arch-manual-latest.json"
+      }
+    },
+    "compact_shards": [
+      {
+        "bytes": 619,
+        "categories": [
+          "linux"
+        ],
+        "count": 1,
+        "id": "compact-0001",
+        "path": "data/shards/compact/compact-0001.json",
+        "sources": [
+          "arch_manual_latest"
+        ],
+        "url": "https://officialjivaro.github.io/jtorrent/data/shards/compact/compact-0001.json"
+      }
+    ],
+    "enabled": true,
+    "full_shards": [
+      {
+        "bytes": 1263,
+        "categories": [
+          "linux"
+        ],
+        "count": 1,
+        "id": "full-0001",
+        "path": "data/shards/full/full-0001.json",
+        "sources": [
+          "arch_manual_latest"
+        ],
+        "url": "https://officialjivaro.github.io/jtorrent/data/shards/full/full-0001.json"
+      }
+    ],
+    "max_file_bytes": 5242880,
+    "notes": [
+      "search-index.min.json remains the legacy full compact array only while it fits under max_file_bytes.",
+      "When a legacy index is too large, it becomes a small sharded-mode stub that points frontends to manifest.json.",
+      "Use search_shards for fast keyword/filter search and compact_shards or full_shards for full result data."
+    ],
+    "search_shards": [
+      {
+        "bytes": 494,
+        "categories": [
+          "linux"
+        ],
+        "count": 1,
+        "id": "search-0001",
+        "path": "data/search/search-0001.json",
+        "sources": [
+          "arch_manual_latest"
+        ],
+        "url": "https://officialjivaro.github.io/jtorrent/data/search/search-0001.json"
+      }
+    ],
+    "source_shards": [],
+    "strategy": "byte-size"
+  },
+  "source_allowlist_mode": "enabled-sources-only",
+  "warnings": [
+    "Offline mode enabled; network sources were skipped."
+  ]
+}
