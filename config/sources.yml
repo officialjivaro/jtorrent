@@ -315,7 +315,8 @@ sources:
   - id: skidrow_reloaded
     name: "SkidrowReloaded"
     type: html_torrent_links
-    enabled: true
+    enabled: false
+    disabled_reason: "Disabled because this homepage returned HTTP 415 in GitHub Actions and produced build errors."
     category: games
     source_homepage: "https://www.skidrowreloaded.com/"
     copyright_status: unknown
