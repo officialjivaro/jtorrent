@@ -9,7 +9,7 @@ from .dedupe import dedupe_items
 from .http import HttpClient, make_http_settings
 from .models import TorrentItem
 from .normalize import normalize_item
-from .output import write_public
+from .output import DEFAULT_MAX_JSON_FILE_BYTES, write_public
 from .policy import PolicyError, validate_item, validate_source
 from .sources import SOURCE_TYPES
 from .timeutil import utc_now_iso
@@ -145,7 +145,9 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
     }
 
     output_dir = Path(settings.get("output_dir", "public"))
-    write_public(output_dir, items, source_summaries, manifest)
+    limits = settings.get("limits", {}) or {}
+    max_file_bytes = int(limits.get("max_json_file_bytes", DEFAULT_MAX_JSON_FILE_BYTES))
+    write_public(output_dir, items, source_summaries, manifest, max_file_bytes=max_file_bytes)
     print(f"Built {len(items)} items into {output_dir}")
     if warnings:
         print("Warnings:")

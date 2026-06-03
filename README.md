@@ -2,19 +2,24 @@
 
 This repository is a scheduled static-data backend for `www.jtorrent.net`.
 
-It uses GitHub Actions once per day to fetch allowlisted authorized torrent sources, normalize the data, deduplicate results, and publish JSON files through GitHub Pages.
+It uses GitHub Actions at 6:00 AM and 6:00 PM Japan time to fetch allowlisted authorized torrent sources, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
 
 ## What this repo publishes
 
 After the workflow runs, GitHub Pages serves:
 
 ```text
-/data/search-index.json       Full normalized index
-/data/search-index.min.json   Compact index for frontend search
-/data/sources.json            Source metadata and counts
-/data/manifest.json           Build timestamp, counts, warnings
-/data/by-category/*.json      Category shards
-/data/by-source/*.json        Source shards
+/data/manifest.json                    Build timestamp, counts, warnings, shard map
+/data/search-index.min.json            Legacy compact index when small; shard pointer when large
+/data/search-index.summary.json        Lightweight search index when small; shard pointer when large
+/data/search-index.json                Full normalized index when small; shard pointer when large
+/data/sources.json                     Source metadata, or a shard pointer when large
+/data/shards/index.json                Shard metadata only
+/data/shards/compact/*.json            Compact result shards, capped near 5 MB each
+/data/shards/full/*.json               Full result shards, capped near 5 MB each
+/data/search/*.json                    Lightweight search-record shards, capped near 5 MB each
+/data/by-category/*.json               Category files, or shard pointers when large
+/data/by-source/*.json                 Source files, or shard pointers when large
 ```
 
 A minimal status page is also generated at `/` so you can verify that deployment worked. The real frontend can stay on `www.jtorrent.net` and read the JSON endpoints.
@@ -58,6 +63,19 @@ settings:
 ```text
 https://YOUR_GITHUB_USERNAME.github.io/jtorrent/data/search-index.min.json
 ```
+
+
+## Automatic JSON sharding
+
+The builder reads this setting from `config/sources.yml`:
+
+```yaml
+settings:
+  limits:
+    max_json_file_bytes: 5242880
+```
+
+Every generated result array is split by byte size, not result count. If `search-index.min.json` still fits below the limit, it remains a normal JSON array for backward compatibility. If it grows too large, it becomes a small pointer object with `mode: "sharded"`; your frontend should then load `data/manifest.json` and read the shard paths from `manifest.sharding.search_shards`, `manifest.sharding.compact_shards`, or `manifest.sharding.full_shards`.
 
 ## Optional custom backend subdomain
 
@@ -151,4 +169,4 @@ const res = await fetch(`${BACKEND}/data/search-index.min.json`, { cache: "no-st
 const items = await res.json();
 ```
 
-Use `data/manifest.json` to display "last updated" and result counts.
+Use `data/manifest.json` to display "last updated" and result counts. For large indexes, load `manifest.sharding.search_shards` first and only load `compact_shards` or `full_shards` when the user opens a result.
