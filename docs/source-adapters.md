@@ -76,3 +76,19 @@ Use this for a fixed list of torrent records.
       source_url: "https://project.example/download"
       torrent_url: "https://project.example/project.iso.torrent"
 ```
+
+
+## Large-source controls
+
+All adapters respect the builder-level source cap. A source-level `max_items` overrides `settings.limits.max_items_per_source`; use this for large feeds or APIs that should contribute more than the global default.
+
+`internet_archive_advancedsearch` also supports:
+
+```yaml
+rows: 1000      # rows requested per API page
+max_pages: 10   # maximum API pages to fetch
+max_items: 10000
+min_items: 1000 # optional QC threshold for required sources
+```
+
+Set `required: false` for best-effort sources whose domains or markup are known to be volatile. Their errors stay visible in `sources.json` and manifest warnings, while required-source errors still block QC.

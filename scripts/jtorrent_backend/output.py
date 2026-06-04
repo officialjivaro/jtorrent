@@ -302,6 +302,9 @@ def write_public(
     if output_dir.exists():
         shutil.rmtree(output_dir)
     (output_dir / "data").mkdir(parents=True, exist_ok=True)
+    # Disable Jekyll processing on GitHub Pages so files and directories with
+    # underscores, leading dots, or generated static names are served exactly as written.
+    (output_dir / ".nojekyll").write_text("", encoding="utf-8")
 
     max_file_bytes = max(1024, int(max_file_bytes or DEFAULT_MAX_JSON_FILE_BYTES))
     item_dicts = [i.to_dict() for i in items]

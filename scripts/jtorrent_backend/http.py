@@ -19,7 +19,11 @@ class HttpClient:
     def __init__(self, settings: HttpSettings):
         self.settings = settings
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": settings.user_agent})
+        self.session.headers.update({
+            "User-Agent": settings.user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/rss+xml;q=0.8,application/json;q=0.8,*/*;q=0.7",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
         self._last_request = 0.0
 
     def _throttle(self) -> None:

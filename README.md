@@ -2,7 +2,7 @@
 
 This repository is a scheduled static-data backend for `www.jtorrent.net`.
 
-It uses GitHub Actions at 6:00 AM and 6:00 PM Japan time to fetch the enabled sources listed in `config/sources.yml`, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
+It uses GitHub Actions on push, on manual dispatch, and once every 24 hours at 1:45 AM Japan time to fetch the enabled sources listed in `config/sources.yml`, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
 
 ## What this repo publishes
 
@@ -36,6 +36,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt
 python -m pytest -q
 python scripts/build_index.py --config config/sources.yml
+python scripts/validate_public_backend.py --public-dir public --require-nojekyll --min-items 5000
 ```
 
 Open `public/index.html` after the build. The JSON files are in `public/data/`.
@@ -97,6 +98,8 @@ html_torrent_links
 rss_feed
 internet_archive_advancedsearch
 ```
+
+Large sources can set `max_items`, `rows`, and `max_pages`. Source-level `max_items` overrides the global `settings.limits.max_items_per_source`. Sources can also set `required: false`; these are best-effort and their fetch errors are reported in `sources.json` without blocking deployment.
 
 Every source should have at minimum:
 
