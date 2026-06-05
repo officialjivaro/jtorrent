@@ -171,24 +171,38 @@ def load_sources(public_dir: Path, data_dir: Path, *, fail_on_optional_source_er
 
     seen: set[str] = set()
     source_errors: list[str] = []
+    min_item_errors: list[str] = []
     for source in sources:
         require(isinstance(source, dict), "sources.json entries must be objects")
         sid = source.get("id")
         require(isinstance(sid, str) and sid, "sources.json entry is missing id")
         require(sid not in seen, f"Duplicate source id in sources.json: {sid}")
         seen.add(sid)
-        error = source.get("error")
+
         required = source.get("required") is not False
+        error = source.get("error")
         # Offline builds intentionally mark skipped network sources this way.
         # Optional best-effort sources can be flaky; their errors are kept in
         # sources.json but do not block deploy unless explicitly requested.
-        if error and str(error).strip().lower() != "offline mode":
+        offline_skipped = bool(error and str(error).strip().lower() == "offline mode")
+        if error and not offline_skipped:
             if required or fail_on_optional_source_errors:
                 source_errors.append(f"{sid}: {error}")
 
-    require(not source_errors, "sources.json contains blocking source errors: " + "; ".join(source_errors))
-    return sources
+        min_items = int(source.get("min_items") or 0)
+        raw_count = int(source.get("item_count") or 0)
+        if required and min_items and raw_count < min_items and not offline_skipped:
+            min_item_errors.append(f"{sid}: item_count={raw_count}, expected at least {min_items}")
 
+        indexed = source.get("indexed_item_count")
+        if indexed is not None:
+            indexed_count = int(indexed or 0)
+            require(indexed_count >= 0, f"{sid}: indexed_item_count must be non-negative")
+            require(raw_count >= 0, f"{sid}: item_count must be non-negative")
+
+    require(not source_errors, "sources.json contains blocking source errors: " + "; ".join(source_errors))
+    require(not min_item_errors, "sources.json has required sources below min_items: " + "; ".join(min_item_errors))
+    return sources
 
 def append_step_summary(report: dict[str, Any]) -> None:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")

@@ -21,3 +21,21 @@ def test_normalize_item_assigns_ids():
     assert item.id.startswith("manual-")
     assert item.slug == "test-torrent"
     assert item.size_bytes == 1024
+
+
+def test_normalize_item_handles_list_text_fields():
+    item = normalize_item(
+        TorrentItem(
+            title=["A", "List", "Title"],
+            source_id="source",
+            description=["first", "second"],
+            license_url=["https://example.com/license"],
+            tags="alpha,beta",
+        )
+    )
+
+    assert item.title == "A List Title"
+    assert item.normalized_title == "a list title"
+    assert item.description == "first second"
+    assert item.license_url == "https://example.com/license"
+    assert item.tags == ["alpha", "beta"]

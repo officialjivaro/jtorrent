@@ -11,15 +11,86 @@ from .models import TorrentItem
 _SIZE_RE = re.compile(r"(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>[KMGTPE]?i?B|[KMGTPE])\b", re.I)
 _INFOHASH_RE = re.compile(r"^[a-fA-F0-9]{40}$|^[a-zA-Z2-7]{32}$")
 
+TEXT_FIELDS = [
+    "title",
+    "category",
+    "subcategory",
+    "source_id",
+    "source_name",
+    "source_url",
+    "source_homepage",
+    "details_url",
+    "download_page_url",
+    "torrent_url",
+    "magnet",
+    "infohash",
+    "size",
+    "date_added",
+    "date_published",
+    "language",
+    "license",
+    "license_url",
+    "copyright_status",
+    "description",
+    "hash_source",
+    "fetched_at",
+]
 
-def slugify(value: str | None, fallback: str = "item") -> str:
-    text = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+
+def scalar_text(value: Any, *, separator: str = " ") -> str:
+    """Return a stable text representation for loose upstream metadata.
+
+    Some sources, especially Internet Archive advancedsearch, can return fields
+    such as title, description, licenseurl, date, or creator as lists. The rest
+    of the backend expects text for most TorrentItem fields, so normalize these
+    values in one place instead of letting list objects reach `.lower()` calls.
+    """
+
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float, bool)):
+        return str(value).strip()
+    if isinstance(value, dict):
+        parts = [scalar_text(v, separator=separator) for v in value.values()]
+        return separator.join(part for part in parts if part).strip()
+    if isinstance(value, (list, tuple, set)):
+        parts = [scalar_text(v, separator=separator) for v in value]
+        return separator.join(part for part in parts if part).strip()
+    return str(value).strip()
+
+
+def first_scalar_text(value: Any) -> str:
+    """Return the first non-empty scalar string from possibly nested metadata."""
+
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return scalar_text(value)
+    if isinstance(value, dict):
+        for item in value.values():
+            text = first_scalar_text(item)
+            if text:
+                return text
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            text = first_scalar_text(item)
+            if text:
+                return text
+        return ""
+    return scalar_text(value)
+
+
+def slugify(value: Any, fallback: str = "item") -> str:
+    text = unicodedata.normalize("NFKD", scalar_text(value)).encode("ascii", "ignore").decode("ascii")
     text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
     return text[:90] or fallback
 
 
-def normalize_title(value: str | None) -> str:
-    text = (value or "").lower()
+def normalize_title(value: Any) -> str:
+    text = scalar_text(value).lower()
     text = re.sub(r"\.torrent$", "", text)
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
@@ -32,7 +103,7 @@ def parse_size_to_bytes(value: Any) -> int | None:
         return value
     if isinstance(value, float):
         return int(value)
-    text = str(value).strip()
+    text = first_scalar_text(value)
     if text.isdigit():
         return int(text)
     m = _SIZE_RE.search(text)
@@ -60,11 +131,12 @@ def format_size(size_bytes: int | None) -> str | None:
     return str(size_bytes)
 
 
-def extract_infohash_from_magnet(magnet: str | None) -> str | None:
-    if not magnet:
+def extract_infohash_from_magnet(magnet: Any) -> str | None:
+    magnet_text = first_scalar_text(magnet)
+    if not magnet_text:
         return None
     try:
-        parsed = urlparse(magnet)
+        parsed = urlparse(magnet_text)
         if parsed.scheme != "magnet":
             return None
         xt_values = parse_qs(parsed.query).get("xt", [])
@@ -79,23 +151,50 @@ def extract_infohash_from_magnet(magnet: str | None) -> str | None:
     return None
 
 
-def clean_tags(tags: list[Any] | None) -> list[str]:
+def clean_tags(tags: Any) -> list[str]:
+    if tags is None or tags == "":
+        return []
+    if isinstance(tags, str):
+        raw_values: list[Any] = re.split(r"[,|]", tags)
+    elif isinstance(tags, dict):
+        raw_values = list(tags.values())
+    elif isinstance(tags, (list, tuple, set)):
+        raw_values = list(tags)
+    else:
+        raw_values = [tags]
+
     result: list[str] = []
-    for tag in tags or []:
-        value = slugify(str(tag), fallback="")
+    for tag in raw_values:
+        if isinstance(tag, (list, tuple, set)):
+            for nested in clean_tags(tag):
+                if nested and nested not in result:
+                    result.append(nested)
+            continue
+        value = slugify(tag, fallback="")
         if value and value not in result:
             result.append(value)
     return result
 
 
-def stable_id(*parts: str | None) -> str:
-    key = "|".join([p or "" for p in parts])
+def stable_id(*parts: Any) -> str:
+    key = "|".join([scalar_text(p) for p in parts])
     return hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
+
+
+def _normalize_text_fields(item: TorrentItem) -> None:
+    for field_name in TEXT_FIELDS:
+        value = getattr(item, field_name)
+        if value is None:
+            continue
+        text = scalar_text(value)
+        setattr(item, field_name, text or None)
 
 
 def normalize_item(item: TorrentItem | dict[str, Any]) -> TorrentItem:
     if isinstance(item, dict):
         item = TorrentItem.from_mapping(item)
+
+    _normalize_text_fields(item)
 
     if item.magnet and not item.infohash:
         ih = extract_infohash_from_magnet(item.magnet)

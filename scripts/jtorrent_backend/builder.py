@@ -45,7 +45,7 @@ def _as_bool(value: Any, default: bool = False) -> bool:
 def _max_items_for_source(settings: dict[str, Any], source: dict[str, Any]) -> int:
     """Return the effective per-source item cap.
 
-    Source-specific caps intentionally win over the global default. The previous
+    Source-specific caps intentionally win over the global default. The original
     implementation always used the global max_items_per_source when present,
     which made large source overrides in config/sources.yml ineffective.
     """
@@ -73,6 +73,13 @@ def _record_source_problem(
         warnings.append(f"{formatted} [optional source]")
     if strict:
         raise RuntimeError(formatted)
+
+
+def _add_indexed_counts(source_summaries: list[dict[str, Any]], counts_by_source: Counter[str]) -> None:
+    for summary in source_summaries:
+        sid = summary.get("id")
+        if sid:
+            summary["indexed_item_count"] = int(counts_by_source.get(str(sid), 0))
 
 
 def build_index(config_path: Path, *, offline: bool = False, strict: bool = False) -> dict[str, Any]:
@@ -125,7 +132,10 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
                 "copyright_status": source.get("copyright_status"),
                 "max_items": max_items,
                 "min_items": min_items,
+                # item_count is the raw number produced by this adapter before
+                # cross-source dedupe. indexed_item_count is added after dedupe.
                 "item_count": 0,
+                "indexed_item_count": 0,
                 "reached_max_items": False,
                 "error": None,
             }
@@ -142,9 +152,10 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
                     errors=errors,
                 )
                 continue
+
+            produced = 0
             try:
                 adapter = adapter_cls(source, http)
-                produced = 0
                 for item in adapter.fetch():
                     if max_items and produced >= max_items:
                         summary["reached_max_items"] = True
@@ -152,7 +163,8 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
                     item = normalize_item(item)
                     all_items.append(item)
                     produced += 1
-                summary["item_count"] = produced
+                    # Keep the summary accurate even if a later page/doc fails.
+                    summary["item_count"] = produced
                 if max_items and produced >= max_items:
                     summary["reached_max_items"] = True
                     warnings.append(f"{sid}: reached max_items={max_items}")
@@ -169,6 +181,7 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
                     )
             except Exception as exc:  # noqa: BLE001
                 msg = str(exc)
+                summary["item_count"] = produced
                 summary["error"] = msg
                 _record_source_problem(
                     sid=sid,
@@ -197,6 +210,7 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
                     "max_items": _max_items_for_source(settings, source),
                     "min_items": max(0, _as_int(source.get("min_items"), 0)),
                     "item_count": 0,
+                    "indexed_item_count": 0,
                     "reached_max_items": False,
                     "error": "offline mode",
                 }
@@ -216,6 +230,8 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
 
     counts_by_category = Counter(i.category or "uncategorized" for i in items)
     counts_by_source = Counter(i.source_id or "unknown" for i in items)
+    _add_indexed_counts(source_summaries, counts_by_source)
+
     manifest = {
         "name": settings.get("name", "JTorrent Backend"),
         "generated_at": generated_at,
