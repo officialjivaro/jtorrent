@@ -22,6 +22,38 @@ _TORRENT_URL_RE = re.compile(r"https?://[^\s\"'<>]+?\.torrent(?:[?#][^\s\"'<>]*)
 _URL_ATTRIBUTES = ["href", "data-href", "data-url", "data-link", "data-download", "data-magnet", "value"]
 
 
+
+def _expand_url_templates(source: dict) -> list[str]:
+    urls = [str(url) for url in source.get("page_urls") or []]
+    templates = source.get("page_url_templates") or []
+    for entry in templates:
+        if isinstance(entry, str):
+            template = entry
+            start = int(source.get("start_page", 1))
+            stop = int(source.get("max_pages", 1))
+            end = start + max(0, stop) - 1
+        else:
+            template = str(entry.get("template") or entry.get("url") or "")
+            start = int(entry.get("start", entry.get("start_page", 1)))
+            if entry.get("end") is not None:
+                end = int(entry.get("end"))
+            else:
+                count = int(entry.get("count", entry.get("max_pages", source.get("max_pages", 1))))
+                end = start + max(0, count) - 1
+        if not template:
+            continue
+        for page in range(start, end + 1):
+            urls.append(template.format(page=page, n=page))
+    # Preserve order while de-duping.
+    seen: set[str] = set()
+    out: list[str] = []
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            out.append(url)
+    return out
+
+
 def _compile_many(patterns: list[str] | None) -> list[re.Pattern]:
     return [re.compile(p, re.I) for p in patterns or []]
 
@@ -132,7 +164,7 @@ class HtmlTorrentLinksSource(SourceAdapter):
         fetch_torrent_metadata = bool(self.source.get("fetch_torrent_metadata", False))
         same_host_only = self.source.get("same_host_only", True) is not False
 
-        queue: deque[tuple[str, int]] = deque((url, 0) for url in self.source.get("page_urls") or [])
+        queue: deque[tuple[str, int]] = deque((url, 0) for url in _expand_url_templates(self.source))
         seen_pages: set[str] = set()
         seen_links: set[str] = set()
         produced = 0

@@ -1,8 +1,23 @@
 # JTorrent backend
 
-This repository is a scheduled static-data backend for `www.jtorrent.net`.
+This repository builds the scheduled static-data backend for `www.jtorrent.net`.
 
-It uses GitHub Actions on push, on manual dispatch, and once every 24 hours at 1:45 AM Japan time to fetch the enabled sources listed in `config/sources.yml`, normalize the data, deduplicate results, split large JSON outputs into about-5-MB shards, and publish the files through GitHub Pages.
+It runs from GitHub Actions on push, on manual dispatch, and once every 24 hours at **1:45 AM Japan time**. The build fetches the enabled sources in `config/sources.yml`, normalizes results, deduplicates records, writes static JSON, validates the output, and deploys it through GitHub Pages.
+
+## Important architecture note
+
+The old frontend approach loaded every search shard into the browser before searching. That works for tens of thousands of records, but it does **not** scale to hundreds of thousands or millions. This repo now publishes a v2 static token index so the browser fetches only the token buckets needed for the user’s query and then hydrates the matching document shards.
+
+The v2 flow is:
+
+1. Load `data/manifest.json`.
+2. Read `manifest.search_v2` or `data/v2/manifest.json`.
+3. Tokenize the query.
+4. Fetch only the matching `data/v2/tokens/<prefix>.json` bucket files.
+5. Intersect/union `doc_id` postings.
+6. Fetch only the needed `data/v2/docs/*.json` shards.
+
+This is the correct static-site pattern for large JSON search. If the project truly needs multiple millions of rich records long-term, move the index to a real search service/database such as Meilisearch, Typesense, OpenSearch, Algolia, PostgreSQL full-text search, or Cloudflare Workers + R2/D1. GitHub Pages is useful for a static dataset, but it has size and bandwidth limits.
 
 ## What this repo publishes
 
@@ -10,23 +25,22 @@ After the workflow runs, GitHub Pages serves:
 
 ```text
 /data/manifest.json                    Build timestamp, counts, warnings, shard map
-/data/search-index.min.json            Legacy compact index when small; shard pointer when large
-/data/search-index.summary.json        Lightweight search index when small; shard pointer when large
-/data/search-index.json                Full normalized index when small; shard pointer when large
+/data/v2/manifest.json                 Scalable token-search manifest
+/data/v2/tokens/*.json                 Token -> doc_id posting buckets
+/data/v2/docs/*.json                   Hydratable compact document shards
+/jtorrent-search-v2.js                 Browser search helper for the v2 token index
+/data/search-index.min.json            Legacy compact endpoint while small; v2 pointer when too large
+/data/search-index.summary.json        Legacy lightweight endpoint while small; v2 pointer when too large
+/data/search-index.json                Legacy full endpoint while small; v2 pointer when too large
 /data/sources.json                     Source metadata, or a shard pointer when large
-/data/shards/index.json                Shard metadata only
-/data/shards/compact/*.json            Compact result shards, capped near 5 MB each
-/data/shards/full/*.json               Full result shards, capped near 5 MB each
-/data/search/*.json                    Lightweight search-record shards, capped near 5 MB each
-/data/by-category/*.json               Category files, or shard pointers when large
-/data/by-source/*.json                 Source files, or shard pointers when large
+/data/shards/index.json                Legacy/v2 shard metadata
 ```
 
-A minimal status page is also generated at `/` so you can verify that deployment worked. The real frontend can stay on `www.jtorrent.net` and read the JSON endpoints.
+Legacy full/compact/search shards are still written while `item_count <= settings.output.legacy_max_items`. Above that threshold, the legacy files become small `mode: "v2-only"` pointer objects so the Pages artifact does not explode in size.
 
-## Source allowlist model
+## Current source reality
 
-The backend is intentionally simple: `config/sources.yml` is the source allowlist. A source with `enabled: true` is fetched, and a source with `enabled: false` is skipped. There is no separate policy block, blocked-domain list, or copyright-status filter in the builder. Source fields such as `license`, `license_url`, and `copyright_status` are optional metadata that can still be useful for the frontend.
+The Internet Archive API-backed sources are the only configured sources that can realistically produce hundreds of thousands of records in a scheduled static build. The HTML/RSS sources are best-effort: some expose only a recent page/feed, some block automated requests, and some do not expose direct torrent/magnet links on listing pages. They remain useful, but they will not produce “millions” unless the source provides a real API, paginated HTML, RSS pages, or a bulk dump.
 
 ## Local setup
 
@@ -36,59 +50,75 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt
 python -m pytest -q
 python scripts/build_index.py --config config/sources.yml
-python scripts/validate_public_backend.py --public-dir public --require-nojekyll --min-items 5000
+python scripts/validate_public_backend.py --public-dir public --require-nojekyll --min-items 30000
+```
+
+For a no-network smoke test:
+
+```bash
+python scripts/build_index.py --config config/sources.yml --offline
+python scripts/validate_public_backend.py --public-dir public --require-nojekyll --min-items 1
 ```
 
 Open `public/index.html` after the build. The JSON files are in `public/data/`.
 
-## GitHub setup from zero
+## GitHub setup
 
-1. Create a new **public** GitHub repository named `jtorrent`.
-2. Upload or push these files to the repo.
-3. Go to **Settings → Pages**.
-4. Set **Source** to **GitHub Actions**.
-5. Go to **Actions → Update JTorrent Backend Index → Run workflow**.
-6. After it finishes, open the Pages URL shown in the workflow output.
-7. In `config/sources.yml`, change `settings.base_url` to your Pages URL, for example:
+1. Upload or push these files to the repo.
+2. Go to **Settings → Pages**.
+3. Set **Source** to **GitHub Actions**.
+4. Go to **Actions → Update JTorrent Backend Index → Run workflow**.
+5. After it finishes, open the Pages URL shown in the workflow output.
+6. In `config/sources.yml`, keep `settings.base_url` aligned to the Pages URL.
 
-```yaml
-settings:
-  base_url: "https://YOUR_GITHUB_USERNAME.github.io/jtorrent"
+## Frontend integration
+
+Recommended v2 usage:
+
+```html
+<script src="https://officialjivaro.github.io/jtorrent/jtorrent-search-v2.js"></script>
+<script>
+const results = await window.JTorrentSearchV2.search({
+  baseUrl: "https://officialjivaro.github.io/jtorrent",
+  query: "ubuntu iso",
+  limit: 20
+});
+console.log(results.results);
+</script>
 ```
 
-8. Run the workflow again.
-9. Point your `www.jtorrent.net` frontend at:
+The old flow that loads `manifest.sharding.search_shards` should be treated as compatibility-only. It cannot scale to very large datasets because it requires downloading the entire search corpus before each browser can search.
 
-```text
-https://YOUR_GITHUB_USERNAME.github.io/jtorrent/data/search-index.min.json
-```
+## Source allowlist model
 
+`config/sources.yml` is the source allowlist. A source with `enabled: true` is fetched, and a source with `enabled: false` is skipped. There is no separate policy block, blocked-domain list, or copyright-status filter in the builder. Source fields such as `license`, `license_url`, and `copyright_status` are metadata copied into output.
 
-## Automatic JSON sharding
+## Output controls
 
-The builder reads this setting from `config/sources.yml`:
+Key settings:
 
 ```yaml
 settings:
   limits:
+    max_items_total: 1000000
+    max_items_per_source: 50000
     max_json_file_bytes: 5242880
+    min_total_items: 30000
+  output:
+    scalable_search:
+      enabled: true
+      token_bucket_prefix_chars: 2
+      max_tokens_per_record: 40
+      max_postings_per_token: 50000
+      description_max_chars: 240
+    legacy_shards: true
+    legacy_max_items: 100000
+    group_files: false
 ```
 
-Every generated result array is split by byte size, not result count. If `search-index.min.json` still fits below the limit, it remains a normal JSON array for backward compatibility. If it grows too large, it becomes a small pointer object with `mode: "sharded"`; your frontend should then load `data/manifest.json` and read the shard paths from `manifest.sharding.search_shards`, `manifest.sharding.compact_shards`, or `manifest.sharding.full_shards`.
-
-## Optional custom backend subdomain
-
-You can also use something like `backend.jtorrent.net` for the GitHub Pages site. Add that domain in **Settings → Pages → Custom domain**, then update DNS according to GitHub Pages instructions. If you do this, also set:
-
-```yaml
-settings:
-  base_url: "https://backend.jtorrent.net"
-  custom_domain: "backend.jtorrent.net"
-```
+`group_files: false` avoids duplicating the whole dataset into by-category/by-source JSON files. The frontend can still filter by category/source from v2 docs.
 
 ## Adding a source
-
-Add an entry in `config/sources.yml`.
 
 Supported adapter types:
 
@@ -99,57 +129,7 @@ rss_feed
 internet_archive_advancedsearch
 ```
 
-Large sources can set `max_items`, `rows`, and `max_pages`. Source-level `max_items` overrides the global `settings.limits.max_items_per_source`. Sources can also set `required: false`; these are best-effort and their fetch errors are reported in `sources.json` without blocking deployment.
-
-Every source should have at minimum:
-
-```yaml
-id: example_source
-name: "Example Source"
-type: html_torrent_links
-enabled: true
-category: example
-source_homepage: "https://example.org"
-```
-
-Optional metadata fields such as `license`, `license_url`, and `copyright_status` are copied into the JSON output when present, but they are not used to filter results.
-
-## Data shape
-
-Each result is normalized into a rich object with useful fields when available:
-
-```json
-{
-  "id": "...",
-  "slug": "...",
-  "title": "...",
-  "category": "linux",
-  "source_id": "ubuntu_official",
-  "source_name": "Official Ubuntu Releases",
-  "source_url": "https://releases.ubuntu.com/",
-  "details_url": "https://releases.ubuntu.com/24.04/",
-  "torrent_url": "https://releases.ubuntu.com/24.04/example.iso.torrent",
-  "magnet": null,
-  "infohash": "...",
-  "trackers": [],
-  "size_bytes": 123,
-  "size": "123 B",
-  "seeders": null,
-  "leechers": null,
-  "completed": null,
-  "date_added": "2026-06-02",
-  "date_published": null,
-  "language": null,
-  "license": "...",
-  "license_url": "...",
-  "copyright_status": "open-source",
-  "description": "...",
-  "tags": ["linux", "iso"],
-  "files": [],
-  "mirrors": [],
-  "fetched_at": "2026-06-02T03:23:00Z"
-}
-```
+Large sources can set `max_items`, `rows`, and `max_pages`. Source-level `max_items` overrides the global `settings.limits.max_items_per_source`. Sources can also set `required: false`; those are best-effort and their fetch errors are reported in `sources.json` without blocking deployment.
 
 ## Deduplication
 
@@ -162,15 +142,3 @@ Dedupe priority:
 5. normalized title + size
 
 When duplicates are found, metadata and mirrors are merged rather than discarded.
-
-## Frontend integration
-
-Example frontend fetch:
-
-```js
-const BACKEND = "https://YOUR_GITHUB_USERNAME.github.io/jtorrent";
-const res = await fetch(`${BACKEND}/data/search-index.min.json`, { cache: "no-store" });
-const items = await res.json();
-```
-
-Use `data/manifest.json` to display "last updated" and result counts. For large indexes, load `manifest.sharding.search_shards` first and only load `compact_shards` or `full_shards` when the user opens a result.

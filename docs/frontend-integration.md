@@ -1,85 +1,61 @@
 # Frontend integration notes
 
-The backend publishes static JSON. Your Squarespace or custom frontend should not send arbitrary user searches to GitHub Actions. It should fetch the latest JSON from GitHub Pages, search locally in the browser, and render filtered results.
+The backend publishes static JSON. Your frontend should not send arbitrary searches to GitHub Actions. It should fetch the static data from GitHub Pages and search in the browser.
 
-## Recommended fetch flow
+## Use v2 for large datasets
 
-Always load the manifest first. It tells the frontend whether the legacy one-file index is still small enough, or whether the data has been split into shards.
+The v2 index is designed for large static search:
 
-```js
-const BACKEND_URL = "https://officialjivaro.github.io/jtorrent";
-const manifest = await fetch(`${BACKEND_URL}/data/manifest.json`, {
-  cache: "no-store"
-}).then(r => r.json());
+```html
+<script src="https://officialjivaro.github.io/jtorrent/jtorrent-search-v2.js"></script>
+<script>
+const response = await window.JTorrentSearchV2.search({
+  baseUrl: "https://officialjivaro.github.io/jtorrent",
+  query: "ubuntu iso",
+  limit: 20
+});
+console.log(response.results);
+</script>
 ```
 
-## Simple mode: one compact index still fits
+This downloads only the token buckets needed for the query and then hydrates matching docs from `data/v2/docs/*.json`.
 
-When `manifest.files.search_index_min.mode === "inline"`, the compact index is still below the configured file-size limit, so the frontend can keep using the old one-file flow.
+## Why not load all shards?
+
+The legacy code path loads `manifest.sharding.search_shards` and searches them all in memory. That is fine for a small dataset, but it becomes slow and bandwidth-heavy as the item count grows. When `item_count` exceeds `settings.output.legacy_max_items`, the legacy endpoints become small `mode: "v2-only"` pointers.
+
+## Useful endpoints
+
+```text
+/data/manifest.json
+/data/v2/manifest.json
+/data/v2/tokens/<prefix>.json
+/data/v2/docs/*.json
+/jtorrent-search-v2.js
+/data/sources.json
+```
+
+## Minimal custom search without helper
 
 ```js
-async function loadCompactIndex() {
-  const manifest = await fetch(`${BACKEND_URL}/data/manifest.json`, { cache: "no-store" }).then(r => r.json());
+const BACKEND = "https://officialjivaro.github.io/jtorrent";
+const manifest = await fetch(`${BACKEND}/data/manifest.json`, { cache: "no-store" }).then(r => r.json());
+const v2 = manifest.search_v2;
 
-  if (manifest.files.search_index_min.mode === "inline") {
-    return fetch(`${BACKEND_URL}/data/search-index.min.json`, { cache: "no-store" }).then(r => r.json());
-  }
-
-  const chunks = await Promise.all(
-    manifest.sharding.compact_shards.map(shard =>
-      fetch(`${BACKEND_URL}/${shard.path}`, { cache: "no-store" }).then(r => r.json())
-    )
-  );
-  return chunks.flat();
+function bucketFor(token) {
+  return token.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, v2.token_bucket_prefix_chars).padEnd(v2.token_bucket_prefix_chars, "_");
 }
+
+const token = "ubuntu";
+const bucket = await fetch(`${BACKEND}/data/v2/tokens/${bucketFor(token)}.json`).then(r => r.json());
+const docIds = bucket.tokens[token] || [];
 ```
 
-## Large mode: use search shards first
+Then use `v2.doc_shards` to find which document shard contains each `doc_id`.
 
-When the index grows, use `manifest.sharding.search_shards` for fast searching/filtering. Search shards contain lightweight records plus the shard path for the full result.
+## Display suggestions
 
-```js
-async function loadSearchRecords() {
-  const manifest = await fetch(`${BACKEND_URL}/data/manifest.json`, { cache: "no-store" }).then(r => r.json());
-  const chunks = await Promise.all(
-    manifest.sharding.search_shards.map(shard =>
-      fetch(`${BACKEND_URL}/${shard.path}`, { cache: "no-store" }).then(r => r.json())
-    )
-  );
-  return chunks.flat();
-}
-```
-
-When the user clicks a result, load the matching `compact_shard` or `full_shard` listed on that search record and find the item by `id`.
-
-## Search example
-
-```js
-function search(items, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return items;
-  return items.filter(item => [
-    item.title,
-    item.description,
-    item.category,
-    item.source_name,
-    ...(item.tags || [])
-  ].filter(Boolean).join(" ").toLowerCase().includes(q));
-}
-```
-
-## Useful frontend filters
-
-- keyword
-- category
-- source
-- copyright/license status
-- torrent available
-- magnet available
-- size range
-- published/added date
-- tags
-
-## Display safety
-
-Show the source page prominently. Direct torrent/magnet buttons can be shown when those fields are present in the JSON. Optional fields like `license` and `copyright_status` can still be displayed as metadata.
+- Show `manifest.generated_at` and `manifest.item_count`.
+- Show source/category/license metadata on each result.
+- Prefer linking to the source/details page first.
+- Direct torrent/magnet buttons can be shown when those fields are present.

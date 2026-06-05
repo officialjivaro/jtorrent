@@ -252,7 +252,7 @@ def build_index(config_path: Path, *, offline: bool = False, strict: bool = Fals
 
     output_dir = Path(settings.get("output_dir", "public"))
     max_file_bytes = _as_int(limits.get("max_json_file_bytes"), DEFAULT_MAX_JSON_FILE_BYTES)
-    write_public(output_dir, items, source_summaries, manifest, max_file_bytes=max_file_bytes)
+    write_public(output_dir, items, source_summaries, manifest, max_file_bytes=max_file_bytes, output_options=settings.get("output", {}) or {})
     print(f"Built {len(items)} items into {output_dir}")
     if warnings:
         print("Warnings:")

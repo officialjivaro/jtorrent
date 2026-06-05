@@ -7,14 +7,24 @@ settings:
   request:
     user_agent: 'JTorrentBackend/0.1 (+https://www.jtorrent.net; contact: no.contact@jtorrent.net)'
     timeout_seconds: 35
-    delay_seconds: 0.35
+    delay_seconds: 0.2
     retries: 2
     max_torrent_bytes: 5242880
   limits:
-    max_items_total: 100000
-    max_items_per_source: 5000
+    max_items_total: 1000000
+    max_items_per_source: 50000
     max_json_file_bytes: 5242880
-    min_total_items: 5000
+    min_total_items: 30000
+  output:
+    scalable_search:
+      enabled: true
+      token_bucket_prefix_chars: 2
+      max_tokens_per_record: 40
+      max_postings_per_token: 50000
+      description_max_chars: 240
+    legacy_shards: true
+    legacy_max_items: 100000
+    group_files: false
 sources:
 - id: ubuntu_official
   name: Official Ubuntu Releases
@@ -168,7 +178,8 @@ sources:
   category: datasets
   source_homepage: https://academictorrents.com/collection/datasets
   copyright_status: open-data
-  license: Academic Torrents dataset collection feed. Verify item-level rights before broad reuse.
+  license: Academic Torrents dataset collection feed. Verify item-level rights before
+    broad reuse.
   feed_urls:
   - https://academictorrents.com/collection/datasets.rss
   tags:
@@ -190,7 +201,7 @@ sources:
   page_urls:
   - https://academictorrents.com/browse.php?page=0
   max_depth: 1
-  max_items: 5000
+  max_items: 10000
   follow_link_regexes:
   - /details/[A-Za-z0-9]+
   include_url_regexes:
@@ -202,6 +213,10 @@ sources:
   - research
   - academic-torrents
   fetch_torrent_metadata: false
+  page_url_templates:
+  - template: https://academictorrents.com/browse.php?page={page}
+    start: 1
+    count: 50
 - id: linuxtracker_recent
   name: LinuxTracker Recent Torrents
   type: html_torrent_links
@@ -210,7 +225,8 @@ sources:
   category: linux
   source_homepage: https://linuxtracker.org/
   copyright_status: open-source
-  license: LinuxTracker public torrent listing. Verify item-level rights before broad reuse.
+  license: LinuxTracker public torrent listing. Verify item-level rights before broad
+    reuse.
   page_urls:
   - https://linuxtracker.org/index.php?active=1&category=0&page=torrents
   max_depth: 1
@@ -229,20 +245,29 @@ sources:
   fetch_torrent_metadata: false
 - id: nyaa_recent
   name: Nyaa Recent RSS
-  type: rss_feed
+  type: html_torrent_links
   enabled: true
   required: false
   category: anime
   source_homepage: https://nyaa.si/
   copyright_status: unknown
-  license: Nyaa RSS feed. Verify item-level rights before broad reuse.
-  feed_urls:
-  - https://nyaa.si/?page=rss
-  max_items: 1000
+  license: Nyaa recent browse pages. Verify item-level rights before broad reuse.
+  max_items: 5000
   tags:
   - anime
   - nyaa
   fetch_torrent_metadata: false
+  page_urls:
+  - https://nyaa.si/
+  page_url_templates:
+  - template: https://nyaa.si/?p={page}
+    start: 2
+    count: 50
+  max_depth: 0
+  include_url_regexes:
+  - \.torrent(?:$|[?#])
+  - '^magnet:'
+  collect_magnets: true
 - id: internet_archive_prelinger_public_domain
   name: Internet Archive Prelinger Public Domain Movies
   type: internet_archive_advancedsearch
@@ -250,7 +275,8 @@ sources:
   category: public-domain
   source_homepage: https://archive.org/details/prelinger
   copyright_status: public-domain
-  license: Internet Archive Prelinger collection query. Verify item-level rights before broad reuse.
+  license: Internet Archive Prelinger collection query. Verify item-level rights before
+    broad reuse.
   license_url: https://archive.org/details/prelinger
   query: collection:prelinger AND mediatype:movies
   rows: 1000
@@ -261,9 +287,9 @@ sources:
   - movies
   - prelinger
   required: true
-  max_pages: 10
-  max_items: 10000
-  min_items: 500
+  max_pages: 250
+  max_items: 250000
+  min_items: 5000
 - id: internet_archive_cc_movies
   name: Internet Archive Creative Commons Movies
   type: internet_archive_advancedsearch
@@ -271,7 +297,8 @@ sources:
   category: creative-commons
   source_homepage: https://archive.org/details/movies
   copyright_status: creative-commons
-  license: Internet Archive movies with Creative Commons license metadata. Verify item-level rights before broad reuse.
+  license: Internet Archive movies with Creative Commons license metadata. Verify
+    item-level rights before broad reuse.
   license_url: https://creativecommons.org/licenses/
   query: licenseurl:*creativecommons* AND mediatype:movies
   rows: 1000
@@ -282,9 +309,9 @@ sources:
   - movies
   - video
   required: true
-  max_pages: 10
-  max_items: 10000
-  min_items: 1000
+  max_pages: 250
+  max_items: 250000
+  min_items: 5000
 - id: internet_archive_cc_audio
   name: Internet Archive Creative Commons Audio
   type: internet_archive_advancedsearch
@@ -292,7 +319,8 @@ sources:
   category: creative-commons
   source_homepage: https://archive.org/details/audio
   copyright_status: creative-commons
-  license: Internet Archive audio with Creative Commons license metadata. Verify item-level rights before broad reuse.
+  license: Internet Archive audio with Creative Commons license metadata. Verify item-level
+    rights before broad reuse.
   license_url: https://creativecommons.org/licenses/
   query: licenseurl:*creativecommons* AND mediatype:audio
   rows: 1000
@@ -303,9 +331,9 @@ sources:
   - audio
   - music
   required: true
-  max_pages: 10
-  max_items: 10000
-  min_items: 1000
+  max_pages: 250
+  max_items: 250000
+  min_items: 5000
 - id: internet_archive_cc_texts
   name: Internet Archive Creative Commons Texts
   type: internet_archive_advancedsearch
@@ -313,7 +341,8 @@ sources:
   category: creative-commons
   source_homepage: https://archive.org/details/texts
   copyright_status: creative-commons
-  license: Internet Archive texts with Creative Commons license metadata. Verify item-level rights before broad reuse.
+  license: Internet Archive texts with Creative Commons license metadata. Verify item-level
+    rights before broad reuse.
   license_url: https://creativecommons.org/licenses/
   query: licenseurl:*creativecommons* AND mediatype:texts
   rows: 1000
@@ -324,9 +353,9 @@ sources:
   - books
   - texts
   required: true
-  max_pages: 10
-  max_items: 10000
-  min_items: 1000
+  max_pages: 250
+  max_items: 250000
+  min_items: 5000
 - id: the_pirate_bay
   name: The Pirate Bay
   type: html_torrent_links
@@ -351,7 +380,7 @@ sources:
   - software
   fetch_torrent_metadata: false
   required: false
-  max_items: 1000
+  max_items: 5000
   min_items: 0
   notes: Optional best-effort source; availability and markup can change without notice.
 - id: igg_games
@@ -376,7 +405,7 @@ sources:
   - repacks
   fetch_torrent_metadata: false
   required: false
-  max_items: 1000
+  max_items: 5000
   min_items: 0
   notes: Optional best-effort source; availability and markup can change without notice.
 - id: limetorrent
@@ -403,7 +432,7 @@ sources:
   - music
   fetch_torrent_metadata: false
   required: false
-  max_items: 1000
+  max_items: 5000
   min_items: 0
   notes: Optional best-effort source; availability and markup can change without notice.
 - id: skidrow_reloaded
@@ -428,7 +457,7 @@ sources:
   - cracks
   fetch_torrent_metadata: false
   required: false
-  max_items: 1000
+  max_items: 5000
   min_items: 0
   notes: Optional best-effort source; availability and markup can change without notice.
 - id: yts_official
@@ -453,7 +482,7 @@ sources:
   - yify
   fetch_torrent_metadata: false
   required: false
-  max_items: 1000
+  max_items: 5000
   min_items: 0
   notes: Optional best-effort source; availability and markup can change without notice.
 manual_items:

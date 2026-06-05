@@ -119,8 +119,22 @@ def validate_index_payload(
         )
         return
 
-    require(isinstance(payload, dict), f"{file_name} must be a JSON array or a sharded-mode object")
-    require(payload.get("mode") == "sharded", f"{file_name} object payload must have mode='sharded'")
+    require(isinstance(payload, dict), f"{file_name} must be a JSON array or an object")
+    mode = payload.get("mode")
+    if mode == "v2-only":
+        require(
+            bool(payload.get("search_v2_manifest_path")),
+            f"{file_name} v2-only pointer is missing search_v2_manifest_path",
+        )
+        validate_json_file_reference(
+            public_dir,
+            data_dir,
+            payload.get("search_v2_manifest_path"),
+            label=f"{file_name}.search_v2_manifest_path",
+        )
+        return
+
+    require(mode == "sharded", f"{file_name} object payload must have mode='sharded' or mode='v2-only'")
     validate_shard_list(
         public_dir,
         data_dir,
@@ -204,6 +218,39 @@ def load_sources(public_dir: Path, data_dir: Path, *, fail_on_optional_source_er
     require(not min_item_errors, "sources.json has required sources below min_items: " + "; ".join(min_item_errors))
     return sources
 
+def validate_search_v2(public_dir: Path, data_dir: Path, manifest: dict[str, Any], *, expected_count: int) -> None:
+    search_v2 = manifest.get("search_v2")
+    if not search_v2:
+        return
+    require(isinstance(search_v2, dict), "manifest.search_v2 must be an object")
+    v2_payload = validate_json_file_reference(public_dir, data_dir, "v2/manifest.json", label="search_v2.manifest")
+    require(isinstance(v2_payload, dict), "data/v2/manifest.json must contain an object")
+    require(v2_payload.get("version") == 2, "data/v2/manifest.json version must be 2")
+    require(int(v2_payload.get("doc_count") or 0) == expected_count, "search_v2 doc_count must equal manifest.item_count")
+
+    doc_total = validate_shard_list(
+        public_dir,
+        data_dir,
+        v2_payload.get("doc_shards"),
+        label="search_v2.doc_shards",
+        expected_total=expected_count,
+    )
+    require(doc_total == expected_count, "search_v2 doc shards do not cover all documents")
+
+    buckets = v2_payload.get("token_buckets") or []
+    require(isinstance(buckets, list), "search_v2.token_buckets must be a list")
+    require(buckets, "search_v2.token_buckets must not be empty")
+    for index, bucket in enumerate(buckets, start=1):
+        require(isinstance(bucket, dict), f"search_v2.token_buckets[{index}] must be an object")
+        payload = validate_json_file_reference(
+            public_dir,
+            data_dir,
+            bucket.get("path"),
+            label=f"search_v2.token_buckets[{index}]",
+        )
+        require(isinstance(payload, dict), f"search_v2 token bucket {index} must contain an object")
+        require(isinstance(payload.get("tokens"), dict), f"search_v2 token bucket {index} is missing tokens object")
+
 def append_step_summary(report: dict[str, Any]) -> None:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_path:
@@ -282,6 +329,7 @@ def validate_public_backend(
     validate_index_payload(public_dir, data_dir, "search-index.json", item_count, "full_shards")
     validate_index_payload(public_dir, data_dir, "search-index.min.json", item_count, "compact_shards")
     validate_index_payload(public_dir, data_dir, "search-index.summary.json", item_count, "search_shards")
+    validate_search_v2(public_dir, data_dir, manifest, expected_count=item_count)
 
     sources = load_sources(public_dir, data_dir, fail_on_optional_source_errors=fail_on_optional_source_errors)
 
@@ -291,26 +339,27 @@ def validate_public_backend(
     sharding = manifest.get("sharding") or {}
     require(isinstance(sharding, dict), "manifest.sharding must be an object")
     if sharding:
+        legacy_active = sharding.get("legacy_active") is not False
         validate_shard_list(
             public_dir,
             data_dir,
             sharding.get("full_shards"),
             label="manifest.sharding.full_shards",
-            expected_total=item_count,
+            expected_total=item_count if legacy_active else None,
         )
         validate_shard_list(
             public_dir,
             data_dir,
             sharding.get("compact_shards"),
             label="manifest.sharding.compact_shards",
-            expected_total=item_count,
+            expected_total=item_count if legacy_active else None,
         )
         validate_shard_list(
             public_dir,
             data_dir,
             sharding.get("search_shards"),
             label="manifest.sharding.search_shards",
-            expected_total=item_count,
+            expected_total=item_count if legacy_active else None,
         )
         validate_shard_list(
             public_dir,
